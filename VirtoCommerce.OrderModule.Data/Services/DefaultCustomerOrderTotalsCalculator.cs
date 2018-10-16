@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Linq;
 using VirtoCommerce.Domain.Order.Model;
 using VirtoCommerce.Domain.Order.Services;
@@ -102,7 +102,32 @@ namespace VirtoCommerce.OrderModule.Data.Services
             order.DiscountTotalWithTax += order.DiscountAmount * taxFactor;
             //Subtract from order tax total self discount tax amount
             order.TaxTotal -= order.DiscountAmount * order.TaxPercentRate;
+
+            //Need to round all order totals
+            order.SubTotal = Math.Round(order.SubTotal, 2, MidpointRounding.AwayFromZero);
+            order.SubTotalWithTax = Math.Round(order.SubTotalWithTax, 2, MidpointRounding.AwayFromZero);
+            order.SubTotalDiscount = Math.Round(order.SubTotalDiscount, 2, MidpointRounding.AwayFromZero);
+            order.SubTotalDiscountWithTax = Math.Round(order.SubTotalDiscountWithTax, 2, MidpointRounding.AwayFromZero);
+            order.TaxTotal = Math.Round(order.TaxTotal, 2, MidpointRounding.AwayFromZero);
+            order.DiscountTotal = Math.Round(order.DiscountTotal, 2, MidpointRounding.AwayFromZero);
+            order.DiscountTotalWithTax = Math.Round(order.DiscountTotalWithTax, 2, MidpointRounding.AwayFromZero);
+            order.Fee = Math.Round(order.Fee, 2, MidpointRounding.AwayFromZero);
+            order.FeeWithTax = Math.Round(order.FeeWithTax, 2, MidpointRounding.AwayFromZero);
+            order.FeeTotal = Math.Round(order.FeeTotal, 2, MidpointRounding.AwayFromZero);
+            order.FeeTotalWithTax = Math.Round(order.FeeTotalWithTax, 2, MidpointRounding.AwayFromZero);
+            order.ShippingTotal = Math.Round(order.ShippingTotal, 2, MidpointRounding.AwayFromZero);
+            order.ShippingTotalWithTax = Math.Round(order.ShippingTotal, 2, MidpointRounding.AwayFromZero);
+            order.ShippingSubTotal = Math.Round(order.ShippingSubTotal, 2, MidpointRounding.AwayFromZero);
+            order.ShippingSubTotalWithTax = Math.Round(order.ShippingSubTotalWithTax, 2, MidpointRounding.AwayFromZero);
+            order.PaymentTotal = Math.Round(order.PaymentTotal, 2, MidpointRounding.AwayFromZero);
+            order.PaymentTotalWithTax = Math.Round(order.PaymentTotalWithTax, 2, MidpointRounding.AwayFromZero);
+            order.PaymentSubTotal = Math.Round(order.PaymentSubTotal, 2, MidpointRounding.AwayFromZero);
+            order.PaymentSubTotalWithTax = Math.Round(order.PaymentSubTotalWithTax, 2, MidpointRounding.AwayFromZero);
+            order.PaymentDiscountTotal = Math.Round(order.PaymentDiscountTotal, 2, MidpointRounding.AwayFromZero);
+            order.PaymentDiscountTotalWithTax = Math.Round(order.PaymentDiscountTotalWithTax, 2, MidpointRounding.AwayFromZero);
+
             order.Total = order.SubTotal + order.ShippingSubTotal + order.TaxTotal + order.PaymentSubTotal + order.FeeTotal - order.DiscountTotal;
+            order.Sum = order.Total;
         }
 
         protected virtual void CalculatePaymentTotals(PaymentIn payment)
@@ -117,6 +142,8 @@ namespace VirtoCommerce.OrderModule.Data.Services
             payment.PriceWithTax = payment.Price * taxFactor;
             payment.DiscountAmountWithTax = payment.DiscountAmount * taxFactor;
             payment.TaxTotal = payment.Total * payment.TaxPercentRate;
+            //For backward compatibility store in sum only payment amount instead of self total
+            //payment.Sum = payment.Total;
         }
 
         protected virtual void CalculateShipmentTotals(Shipment shipment)
@@ -132,6 +159,7 @@ namespace VirtoCommerce.OrderModule.Data.Services
             shipment.Total = shipment.Price + shipment.Fee - shipment.DiscountAmount;
             shipment.TotalWithTax = shipment.PriceWithTax + shipment.FeeWithTax - shipment.DiscountAmountWithTax;
             shipment.TaxTotal = shipment.Total * shipment.TaxPercentRate;
+            shipment.Sum = shipment.Total;
         }
 
         protected virtual void CalculateLineItemTotals(LineItem lineItem)

@@ -8,6 +8,8 @@ namespace VirtoCommerce.OrderModule.Data.Model
 {
     public class AddressEntity : Entity
     {
+        [StringLength(2048)]
+        public string Name { get; set; }
         [StringLength(32)]
         public string AddressType { get; set; }
         [StringLength(64)]
@@ -89,6 +91,7 @@ namespace VirtoCommerce.OrderModule.Data.Model
             target.LastName = LastName;
             target.Line1 = Line1;
             target.Line2 = Line2;
+            target.Organization = Organization;
         }
 
         public override bool Equals(object obj)

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using VirtoCommerce.Domain.Commerce.Model;
@@ -25,9 +25,6 @@ namespace VirtoCommerce.OrderModule.Data.Services
         {
             var customerOrder = ConvertCartToOrder(cart);
             _customerOrderService.SaveChanges(new[] { customerOrder });
-
-            customerOrder = _customerOrderService.GetByIds(new[] { customerOrder.Id }).FirstOrDefault();
-
             return customerOrder;
         }
 
@@ -125,7 +122,9 @@ namespace VirtoCommerce.OrderModule.Data.Services
         protected virtual orderModel.LineItem ToOrderModel(cartModel.LineItem lineItem)
         {
             if (lineItem == null)
+            {
                 throw new ArgumentNullException(nameof(lineItem));
+            }
 
             var retVal = AbstractTypeFactory<orderModel.LineItem>.TryCreateInstance();
 
@@ -169,7 +168,9 @@ namespace VirtoCommerce.OrderModule.Data.Services
         protected virtual Discount ToOrderModel(Discount discount)
         {
             if (discount == null)
+            {
                 throw new ArgumentNullException(nameof(discount));
+            }
 
             var retVal = AbstractTypeFactory<Discount>.TryCreateInstance();
 
@@ -220,7 +221,9 @@ namespace VirtoCommerce.OrderModule.Data.Services
         protected virtual orderModel.ShipmentItem ToOrderModel(cartModel.ShipmentItem shipmentItem)
         {
             if (shipmentItem == null)
+            {
                 throw new ArgumentNullException(nameof(shipmentItem));
+            }
 
             var retVal = AbstractTypeFactory<orderModel.ShipmentItem>.TryCreateInstance();
             retVal.BarCode = shipmentItem.BarCode;
@@ -231,8 +234,9 @@ namespace VirtoCommerce.OrderModule.Data.Services
         protected virtual orderModel.PaymentIn ToOrderModel(cartModel.Payment payment)
         {
             if (payment == null)
+            {
                 throw new ArgumentNullException(nameof(payment));
-
+            }
             var retVal = AbstractTypeFactory<orderModel.PaymentIn>.TryCreateInstance();
             retVal.Currency = payment.Currency;
             retVal.DiscountAmount = payment.DiscountAmount;
@@ -241,6 +245,8 @@ namespace VirtoCommerce.OrderModule.Data.Services
             retVal.TaxType = payment.TaxType;
 
             retVal.GatewayCode = payment.PaymentGatewayCode;
+            retVal.Amount = payment.Amount;
+            //For backward compatibility store in sum only payment amount instead of self total
             retVal.Sum = payment.Amount;
             retVal.PaymentStatus = PaymentStatus.New;
             if (payment.BillingAddress != null)

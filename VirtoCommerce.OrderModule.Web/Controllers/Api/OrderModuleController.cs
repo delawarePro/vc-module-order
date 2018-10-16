@@ -1,4 +1,4 @@
-﻿using CacheManager.Core;
+using CacheManager.Core;
 using System;
 using System.Collections.Specialized;
 using System.IO;
@@ -23,6 +23,7 @@ using VirtoCommerce.OrderModule.Data.Services;
 using VirtoCommerce.OrderModule.Web.BackgroundJobs;
 using VirtoCommerce.OrderModule.Web.Model;
 using VirtoCommerce.OrderModule.Web.Security;
+using VirtoCommerce.Platform.Core.ChangeLog;
 using VirtoCommerce.Platform.Core.Common;
 using VirtoCommerce.Platform.Core.Notifications;
 using VirtoCommerce.Platform.Core.Security;
@@ -48,12 +49,14 @@ namespace VirtoCommerce.OrderModule.Web.Controllers.Api
         private readonly IShoppingCartService _cartService;
         private readonly INotificationManager _notificationManager;
         private readonly INotificationTemplateResolver _notificationTemplateResolver;
+        private readonly IChangeLogService _changeLogService;
+        private readonly ICustomerOrderTotalsCalculator _totalsCalculator;
         private static readonly object _lockObject = new object();
 
         public OrderModuleController(ICustomerOrderService customerOrderService, ICustomerOrderSearchService searchService, IStoreService storeService, IUniqueNumberGenerator numberGenerator,
                                      ICacheManager<object> cacheManager, Func<IOrderRepository> repositoryFactory, IPermissionScopeService permissionScopeService, ISecurityService securityService,
                                      ICustomerOrderBuilder customerOrderBuilder, IShoppingCartService cartService, INotificationManager notificationManager,
-                                     INotificationTemplateResolver notificationTemplateResolver)
+                                     INotificationTemplateResolver notificationTemplateResolver, IChangeLogService changeLogService, ICustomerOrderTotalsCalculator totalsCalculator)
         {
             _customerOrderService = customerOrderService;
             _searchService = searchService;
@@ -67,6 +70,8 @@ namespace VirtoCommerce.OrderModule.Web.Controllers.Api
             _cartService = cartService;
             _notificationManager = notificationManager;
             _notificationTemplateResolver = notificationTemplateResolver;
+            _changeLogService = changeLogService;
+            _totalsCalculator = totalsCalculator;
         }
 
         /// <summary>
@@ -95,14 +100,15 @@ namespace VirtoCommerce.OrderModule.Web.Controllers.Api
         /// </summary>
         /// <remarks>Return a single customer order with all nested documents or null if order was not found</remarks>
         /// <param name="number">customer order number</param>
+        /// <param name="respGroup"></param>
         [HttpGet]
         [Route("number/{number}")]
         [ResponseType(typeof(CustomerOrder))]
-        public IHttpActionResult GetByNumber(string number)
+        public IHttpActionResult GetByNumber(string number, [FromUri] string respGroup = null)
         {
             var searchCriteria = AbstractTypeFactory<CustomerOrderSearchCriteria>.TryCreateInstance();
             searchCriteria.Number = number;
-            searchCriteria.ResponseGroup = CustomerOrderResponseGroup.Full.ToString();
+            searchCriteria.ResponseGroup = respGroup;
 
             var result = _searchService.SearchCustomerOrders(searchCriteria);
 
@@ -126,12 +132,13 @@ namespace VirtoCommerce.OrderModule.Web.Controllers.Api
         /// </summary>
         /// <remarks>Return a single customer order with all nested documents or null if order was not found</remarks>
         /// <param name="id">customer order id</param>
+        /// <param name="respGroup"></param>
         [HttpGet]
         [Route("{id}")]
         [ResponseType(typeof(CustomerOrder))]
-        public IHttpActionResult GetById(string id)
+        public IHttpActionResult GetById(string id, [FromUri] string respGroup = null)
         {
-            var retVal = _customerOrderService.GetByIds(new[] { id }, CustomerOrderResponseGroup.Full.ToString()).FirstOrDefault();
+            var retVal = _customerOrderService.GetByIds(new[] { id }, respGroup).FirstOrDefault();
             if (retVal == null)
             {
                 return NotFound();
@@ -160,9 +167,8 @@ namespace VirtoCommerce.OrderModule.Web.Controllers.Api
         [ResponseType(typeof(CustomerOrder))]
         public IHttpActionResult CalculateTotals(CustomerOrder order)
         {
-            //Nothing to do special because all order totals will be evaluated in domain CustomerOrder properties transiently        
+            _totalsCalculator.CalculateTotals(order);
             return Ok(order);
-
         }
 
         /// <summary>
@@ -498,6 +504,26 @@ namespace VirtoCommerce.OrderModule.Web.Controllers.Api
             return ResponseMessage(result);
         }
 
+
+        [HttpGet]
+        [Route("{id}/changes")]
+        [ResponseType(typeof(OperationLog[]))]
+        public IHttpActionResult GetOrderChanges(string id)
+        {
+            var result = new OperationLog[] { };
+            var order = _customerOrderService.GetByIds(new[] { id }).FirstOrDefault();
+            if (order != null)
+            {
+                _changeLogService.LoadChangeLogs(order);
+                //Load general change log for order
+                result = order.GetFlatObjectsListWithInterface<IHasChangesHistory>()
+                                          .Distinct()
+                                          .SelectMany(x => x.OperationsLog)
+                                          .OrderBy(x => x.CreatedDate)
+                                          .Distinct().ToArray();
+            }
+            return Ok(result);
+        }
         private CustomerOrderSearchCriteria FilterOrderSearchCriteria(string userName, CustomerOrderSearchCriteria criteria)
         {
 
